@@ -1,6 +1,12 @@
 module OmniAuth
   module Strategies
     class CronofyServiceAccount < CronofyBase
+      WHITELISTED_AUTHORIZE_PARAMS = %w{
+        avoid_linking
+        link_token
+        provider_name
+      }
+
       option :name, "cronofy_service_account"
 
       option :client_options, {
@@ -8,7 +14,21 @@ module OmniAuth
       }
 
       def request_phase
-        options[:authorize_params] = { delegated_scope: options[:delegated_scope]} if options[:delegated_scope]
+        session_params = session['omniauth.params']
+        params = {}
+
+        WHITELISTED_AUTHORIZE_PARAMS.each do |param|
+          next unless session_params[param]
+          params[param] = session_params[param]
+        end
+
+        if options[:authorize_params]
+          options[:authorize_params].merge!(params)
+        else
+          options[:authorize_params] = params
+        end
+
+        options[:authorize_params][:delegated_scope] = options[:delegated_scope] if options[:delegated_scope]
         super
       end
 
